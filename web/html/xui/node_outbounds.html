@@ -1,10 +1,74 @@
 {{template "head" .}}
 
-<div id="app"
-     style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,sans-serif;
-            font-size:14px;
-            line-height:1.5715;
-            color:rgba(0,0,0,.85);">
+<style>
+    .node-outbound-page {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.5715;
+        color: rgba(0, 0, 0, .85);
+    }
+
+    .node-outbound-page .ant-table {
+        font-size: 14px;
+    }
+
+    .node-outbound-page .ant-table-thead > tr > th,
+    .node-outbound-page .ant-table-tbody > tr > td,
+    .node-outbound-page .ant-card,
+    .node-outbound-page .ant-input,
+    .node-outbound-page .ant-btn,
+    .node-outbound-page .ant-tag,
+    .node-outbound-page .ant-dropdown-menu-item {
+        font-size: 14px;
+    }
+
+    .node-outbound-page .node-latency-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .node-outbound-page .node-latency-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .node-outbound-page .node-latency-label {
+        min-width: 56px;
+        color: rgba(0, 0, 0, 0.65);
+    }
+
+    .node-outbound-modal-wrap .ant-modal-header {
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
+
+    .node-outbound-modal-wrap .ant-modal-title,
+    .node-outbound-modal-wrap .ant-form-item-label > label,
+    .node-outbound-modal-wrap .ant-input,
+    .node-outbound-modal-wrap .ant-input-number,
+    .node-outbound-modal-wrap .ant-btn,
+    .node-outbound-modal-wrap .ant-alert {
+        font-size: 14px;
+    }
+
+    .node-outbound-modal-wrap .ant-modal-close {
+        top: 12px;
+    }
+
+    .node-outbound-modal-wrap .ant-modal-close-x {
+        width: 56px;
+        height: 56px;
+        line-height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div id="app" class="node-outbound-page">
     <a-layout style="min-height: 100vh;">
         {{ template "commonSider" . }}
 
@@ -18,12 +82,14 @@
                                 <a-tag color="green" style="font-size: 14px;">[[ sizeFormat(total.up) ]] / [[ sizeFormat(total.down) ]]</a-tag>
                             </div>
                         </a-col>
+
                         <a-col :xs="24" :sm="12" :md="8">
                             <div style="font-size: 14px; line-height: 22px; word-break: break-all;">
                                 当前总流量：
                                 <a-tag color="green" style="font-size: 14px;">[[ sizeFormat(total.up + total.down) ]]</a-tag>
                             </div>
                         </a-col>
+
                         <a-col :xs="24" :sm="12" :md="8">
                             <div style="font-size: 14px; line-height: 22px; word-break: break-all;">
                                 节点数量：
@@ -120,7 +186,6 @@
                                     检测延迟
                                 </a-button>
                             </template>
-
                         </a-table>
                     </div>
                 </a-card>
@@ -133,5 +198,4 @@
 </div>
 
 {{template "js" .}}
-<script src="{{ .base_path }}assets/js/model/models.js"></script>
 <script src="{{ .base_path }}assets/js/node_outbounds.js"></script>

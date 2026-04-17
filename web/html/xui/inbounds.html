@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 {{template "head" .}}
+
 <style>
     @media (min-width: 769px) {
         .ant-layout-content {
@@ -11,7 +12,50 @@
     .ant-col-sm-24 {
         margin-top: 10px;
     }
+
+    .inbound-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .inbound-toolbar .ant-btn,
+    .inbound-toolbar .ant-input,
+    .inbound-toolbar .ant-input-search {
+        font-size: 14px;
+    }
+
+    .inbound-search {
+        width: 260px;
+        max-width: 100%;
+    }
+
+    .inbound-select-header,
+    .inbound-select-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        font-size: 14px;
+    }
+
+    .inbound-select-label {
+        color: rgba(0, 0, 0, 0.85);
+    }
+
+    .inbound-table-wrap .ant-table {
+        font-size: 14px;
+    }
+
+    .inbound-table-wrap .ant-table-thead > tr > th,
+    .inbound-table-wrap .ant-table-tbody > tr > td {
+        font-size: 14px;
+    }
 </style>
+
 <body>
 <a-layout id="app" v-cloak>
     {{ template "commonSider" . }}
@@ -23,6 +67,7 @@
                         Please go to the panel settings as soon as possible to modify the username and password, otherwise there may be a risk of leaking account information
                     </a-tag>
                 </transition>
+
                 <transition name="list" appear>
                     <a-card hoverable style="margin-bottom: 20px;">
                         <a-row>
@@ -30,10 +75,12 @@
                                 总上传 / 下载：
                                 <a-tag color="green">[[ sizeFormat(total.up) ]] / [[ sizeFormat(total.down) ]]</a-tag>
                             </a-col>
+
                             <a-col :xs="24" :sm="24" :lg="12">
                                 总用量：
                                 <a-tag color="green">[[ sizeFormat(total.up + total.down) ]]</a-tag>
                             </a-col>
+
                             <a-col :xs="24" :sm="24" :lg="12">
                                 入站数量：
                                 <a-tag color="green">[[ dbInbounds.length ]]</a-tag>
@@ -41,182 +88,266 @@
                         </a-row>
                     </a-card>
                 </transition>
+
                 <transition name="list" appear>
                     <a-card hoverable>
-                        <div slot="title">
+                        <div class="inbound-toolbar">
                             <a-button type="primary" icon="plus" @click="openAddInbound"></a-button>
+
+                            <a-dropdown>
+                                <a-button>
+                                    批量操作
+                                    <a-icon type="down"></a-icon>
+                                </a-button>
+                                <a-menu slot="overlay" @click="handleBatchAction">
+                                    <a-menu-item key="enable">
+                                        <a-icon type="check-circle"></a-icon>启动
+                                    </a-menu-item>
+                                    <a-menu-item key="disable">
+                                        <a-icon type="close-circle"></a-icon>停止
+                                    </a-menu-item>
+                                    <a-menu-item key="delete">
+                                        <a-icon type="delete"></a-icon>批量删除
+                                    </a-menu-item>
+                                    <a-menu-item key="addMonth">
+                                        <a-icon type="calendar"></a-icon>增加到期/月
+                                    </a-menu-item>
+                                    <a-menu-item key="addYear">
+                                        <a-icon type="calendar"></a-icon>增加到期/年
+                                    </a-menu-item>
+                                    <a-menu-item key="resetTraffic">
+                                        <a-icon type="retweet"></a-icon>重置流量
+                                    </a-menu-item>
+                                    <a-menu-item key="copyLinks">
+                                        <a-icon type="copy"></a-icon>批量复制
+                                    </a-menu-item>
+                                </a-menu>
+                            </a-dropdown>
+
+                            <a-input-search
+                                    v-model.trim="searchKey"
+                                    class="inbound-search"
+                                    placeholder="搜索备注，例如：美国 / aaa"
+                                    allow-clear>
+                            </a-input-search>
                         </div>
-<!--                        <a-input v-model="searchKey" placeholder="搜索" autofocus style="max-width: 300px"></a-input>-->
-                        <a-table :columns="columns" :row-key="dbInbound => dbInbound.id"
-                                 :data-source="dbInbounds"
-                                 :loading="spinning" :scroll="{ x: 1500 }"
-                                 :pagination="false"
-                                 style="margin-top: 20px"
-                                 @change="() => getDBInbounds()">
-                            <template slot="action" slot-scope="text, dbInbound">
-                                <a-dropdown :trigger="['click']">
-                                    <a @click="e => e.preventDefault()">操作</a>
-                                    <a-menu slot="overlay" @click="a => clickAction(a, dbInbound)">
-                                        <a-menu-item v-if="dbInbound.hasLink()" key="qrcode">
-                                            <a-icon type="qrcode"></a-icon>二维码
-                                        </a-menu-item>
-                                        <a-menu-item key="edit">
-                                            <a-icon type="edit"></a-icon>编辑
-                                        </a-menu-item>
-                                        <a-menu-item key="resetTraffic">
-                                            <a-icon type="retweet"></a-icon>重置流量
-                                        </a-menu-item>
-                                        <a-menu-item key="delete">
-                                            <span style="color: #FF4D4F">
-                                                <a-icon type="delete"></a-icon>删除
-                                            </span>
-                                        </a-menu-item>
-                                    </a-menu>
-                                </a-dropdown>
-                            </template>
-                            <template slot="protocol" slot-scope="text, dbInbound">
-                                <a-tag color="blue">[[ dbInbound.protocol ]]</a-tag>
-                            </template>
-                            <template slot="traffic" slot-scope="text, dbInbound">
-                                <a-tag color="blue">[[ sizeFormat(dbInbound.up) ]] / [[ sizeFormat(dbInbound.down) ]]</a-tag>
-                                <template v-if="dbInbound.total > 0">
-                                    <a-tag v-if="dbInbound.up + dbInbound.down < dbInbound.total" color="cyan">[[ sizeFormat(dbInbound.total) ]]</a-tag>
-                                    <a-tag v-else color="red">[[ sizeFormat(dbInbound.total) ]]</a-tag>
+
+                        <div class="inbound-table-wrap">
+                            <a-table :columns="columns"
+                                     :row-key="dbInbound => dbInbound.id"
+                                     :data-source="filteredDbInbounds"
+                                     :loading="spinning"
+                                     :scroll="{ x: 1500 }"
+                                     :pagination="false"
+                                     style="margin-top: 20px"
+                                     @change="() => getDBInbounds()">
+
+                                <template slot="action" slot-scope="text, dbInbound">
+                                    <a-dropdown :trigger="['click']">
+                                        <a @click="e => e.preventDefault()">操作</a>
+                                        <a-menu slot="overlay" @click="a => clickAction(a, dbInbound)">
+                                            <a-menu-item v-if="dbInbound.hasLink()" key="qrcode">
+                                                <a-icon type="qrcode"></a-icon>二维码
+                                            </a-menu-item>
+
+                                            <a-menu-item key="edit">
+                                                <a-icon type="edit"></a-icon>编辑
+                                            </a-menu-item>
+
+                                            <a-menu-item key="resetTraffic">
+                                                <a-icon type="retweet"></a-icon>重置流量
+                                            </a-menu-item>
+
+                                            <a-menu-item key="delete">
+                                                <span style="color: #FF4D4F">
+                                                    <a-icon type="delete"></a-icon>删除
+                                                </span>
+                                            </a-menu-item>
+                                        </a-menu>
+                                    </a-dropdown>
                                 </template>
-                                <a-tag v-else color="green">无限制</a-tag>
-                            </template>
-                            <template slot="settings" slot-scope="text, dbInbound">
-                                <a-button type="link" @click="showInfo(dbInbound)">查看</a-button>
-                            </template>
-                            <template slot="stream" slot-scope="text, dbInbound, index">
-                                <template v-if="dbInbound.isVMess || dbInbound.isVLess || dbInbound.isTrojan || dbInbound.isSS">
-                                    <a-tag color="green">[[ inbounds[index].stream.network ]]</a-tag>
-                                    <a-tag v-if="inbounds[index].stream.isTls" color="blue">tls</a-tag>
-                                    <a-tag v-if="inbounds[index].stream.isXTls" color="blue">xtls</a-tag>
+
+                                <template slot="selectTitle">
+                                    <div class="inbound-select-header">
+                                        <a-checkbox
+                                                :checked="isAllDisplayedSelected"
+                                                :indeterminate="isDisplayedSelectionIndeterminate"
+                                                @change="toggleSelectAllDisplayed">
+                                        </a-checkbox>
+                                        <span class="inbound-select-label">全选</span>
+                                    </div>
                                 </template>
-                                <template v-else>无</template>
-                            </template>
-                            <template slot="enable" slot-scope="text, dbInbound">
-                                <a-switch v-model="dbInbound.enable" @change="switchEnable(dbInbound)"></a-switch>
-                            </template>
-                            <template slot="expiryTime" slot-scope="text, dbInbound">
-                                <template v-if="dbInbound.expiryTime > 0">
-                                    <a-tag v-if="dbInbound.isExpiry" color="red">
-                                        [[ DateUtil.formatMillis(dbInbound.expiryTime) ]]
-                                    </a-tag>
-                                    <a-tag v-else color="blue">
-                                        [[ DateUtil.formatMillis(dbInbound.expiryTime) ]]
-                                    </a-tag>
+
+                                <template slot="select" slot-scope="text, dbInbound">
+                                    <div class="inbound-select-cell">
+                                        <a-checkbox
+                                                :checked="isInboundSelected(dbInbound.id)"
+                                                @change="e => toggleInboundSelection(dbInbound.id, e.target.checked)">
+                                        </a-checkbox>
+                                    </div>
                                 </template>
-                                <a-tag v-else color="green">无限期</a-tag>
-                            </template>
-                        </a-table>
+
+                                <template slot="protocol" slot-scope="text, dbInbound">
+                                    <a-tag color="blue">[[ dbInbound.protocol ]]</a-tag>
+                                </template>
+
+                                <template slot="traffic" slot-scope="text, dbInbound">
+                                    <a-tag color="blue">[[ sizeFormat(dbInbound.up) ]] / [[ sizeFormat(dbInbound.down) ]]</a-tag>
+
+                                    <template v-if="dbInbound.total > 0">
+                                        <a-tag :color="getTrafficTagColor(dbInbound)">
+                                            [[ sizeFormat(dbInbound.total) ]]
+                                        </a-tag>
+                                    </template>
+
+                                    <a-tag v-else color="green">无限制</a-tag>
+                                </template>
+
+                                <template slot="settings" slot-scope="text, dbInbound">
+                                    <a-button type="link" @click="showInfo(dbInbound)">查看</a-button>
+                                </template>
+
+                                <template slot="stream" slot-scope="text, dbInbound">
+                                    <template v-if="getInboundById(dbInbound.id) && (dbInbound.isVMess || dbInbound.isVLess || dbInbound.isTrojan || dbInbound.isSS)">
+                                        <a-tag color="green">[[ getInboundById(dbInbound.id).stream.network ]]</a-tag>
+                                        <a-tag v-if="getInboundById(dbInbound.id).stream.isTls" color="blue">tls</a-tag>
+                                        <a-tag v-if="getInboundById(dbInbound.id).stream.isXTls" color="blue">xtls</a-tag>
+                                    </template>
+                                    <template v-else>无</template>
+                                </template>
+
+                                <template slot="enable" slot-scope="text, dbInbound">
+                                    <a-switch v-model="dbInbound.enable" @change="switchEnable(dbInbound)"></a-switch>
+                                </template>
+
+                                <template slot="expiryTime" slot-scope="text, dbInbound">
+                                    <template v-if="dbInbound.expiryTime > 0">
+                                        <a-tag :color="getExpiryTagColor(dbInbound)">
+                                            [[ DateUtil.formatMillis(dbInbound.expiryTime) ]]
+                                        </a-tag>
+                                    </template>
+                                    <a-tag v-else color="green">无限期</a-tag>
+                                </template>
+                            </a-table>
+                        </div>
                     </a-card>
                 </transition>
             </a-spin>
         </a-layout-content>
     </a-layout>
 </a-layout>
-{{template "js" .}}
-<script>
 
-    const columns = [{
+{{template "js" .}}
+
+<script>
+(function () {
+    var ONE_GB = 1024 * 1024 * 1024;
+    var WARNING_300_GB = 300 * ONE_GB;
+    var WARNING_100_GB = 100 * ONE_GB;
+    var ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    var columns = [{
         title: "操作",
         align: 'center',
-        width: 30,
+        width: 60,
         scopedSlots: { customRender: 'action' },
+    }, {
+        title: "",
+        align: 'center',
+        width: 88,
+        scopedSlots: {
+            customRender: 'select',
+            title: 'selectTitle',
+        },
     }, {
         title: "启用",
         align: 'center',
-        width: 40,
+        width: 60,
         scopedSlots: { customRender: 'enable' },
     }, {
         title: "id",
         align: 'center',
         dataIndex: "id",
-        width: 30,
+        width: 50,
     }, {
         title: "备注",
         align: 'center',
-        width: 100,
+        width: 140,
         dataIndex: "remark",
     }, {
         title: "协议",
         align: 'center',
-        width: 60,
+        width: 90,
         scopedSlots: { customRender: 'protocol' },
     }, {
         title: "端口",
         align: 'center',
         dataIndex: "port",
-        width: 60,
+        width: 90,
     }, {
         title: "流量↑|↓",
         align: 'center',
-        width: 150,
+        width: 180,
         scopedSlots: { customRender: 'traffic' },
     }, {
         title: "详细信息",
         align: 'center',
-        width: 40,
+        width: 80,
         scopedSlots: { customRender: 'settings' },
     }, {
         title: "传输配置",
         align: 'center',
-        width: 60,
+        width: 90,
         scopedSlots: { customRender: 'stream' },
     }, {
         title: "到期时间",
         align: 'center',
-        width: 80,
+        width: 180,
         scopedSlots: { customRender: 'expiryTime' },
     }];
 
-    const app = new Vue({
+    new Vue({
         delimiters: ['[[', ']]'],
         el: '#app',
         data: {
-            siderDrawer,
+            siderDrawer: siderDrawer,
             spinning: false,
             inbounds: [],
             dbInbounds: [],
             searchKey: '',
+            selectedInboundIds: [],
+            columns: columns,
         },
         methods: {
-            loading(spinning=true) {
-                this.spinning = spinning;
+            loading: function (spinning) {
+                this.spinning = spinning !== false;
             },
-            async getDBInbounds() {
+
+            getDBInbounds: async function () {
                 this.loading();
-                const msg = await HttpUtil.post('/xui/inbound/list');
+                var msg = await HttpUtil.post('/xui/inbound/list');
                 this.loading(false);
                 if (!msg.success) {
                     return;
                 }
-                this.setInbounds(msg.obj);
+                this.setInbounds(msg.obj || []);
             },
-            setInbounds(dbInbounds) {
+
+            setInbounds: function (dbInbounds) {
                 this.inbounds.splice(0);
                 this.dbInbounds.splice(0);
-                for (const inbound of dbInbounds) {
-                    const dbInbound = new DBInbound(inbound);
+
+                for (var i = 0; i < dbInbounds.length; i++) {
+                    var inbound = dbInbounds[i];
+                    var dbInbound = new DBInbound(inbound);
                     this.inbounds.push(dbInbound.toInbound());
                     this.dbInbounds.push(dbInbound);
                 }
+
+                this.keepValidSelections();
             },
-            searchInbounds(key) {
-                if (ObjectUtil.isEmpty(key)) {
-                    this.searchedInbounds = this.dbInbounds.slice();
-                } else {
-                    this.searchedInbounds.splice(0, this.searchedInbounds.length);
-                    this.dbInbounds.forEach(inbound => {
-                        if (ObjectUtil.deepSearch(inbound, key)) {
-                            this.searchedInbounds.push(inbound);
-                        }
-                    });
-                }
-            },
-            clickAction(action, dbInbound) {
+
+            clickAction: function (action, dbInbound) {
                 switch (action.key) {
                     case "qrcode":
                         this.showQrcode(dbInbound);
@@ -232,30 +363,35 @@
                         break;
                 }
             },
-            openAddInbound() {
+
+            openAddInbound: function () {
+                var _this = this;
                 inModal.show({
                     title: '添加入站',
                     okText: '添加',
                     isEdit: false,
-                    confirm: async (inbound, dbInbound) => {
-                        await this.addInbound(inbound, dbInbound);
+                    confirm: async function (inbound, dbInbound) {
+                        await _this.addInbound(inbound, dbInbound);
                     }
                 });
             },
-            openEditInbound(dbInbound) {
-                const inbound = dbInbound.toInbound();
+
+            openEditInbound: function (dbInbound) {
+                var _this = this;
+                var inbound = dbInbound.toInbound();
                 inModal.show({
                     title: '修改入站',
                     okText: '修改',
                     inbound: inbound,
                     dbInbound: dbInbound,
                     isEdit: true,
-                    confirm: async (inbound, dbInbound) => {
-                        await this.updateInbound(inbound, dbInbound);
+                    confirm: async function (inbound, editDbInbound) {
+                        await _this.updateInbound(inbound, editDbInbound);
                     }
                 });
             },
-            buildInboundPayload(inbound, dbInbound) {
+
+            buildInboundPayload: function (inbound, dbInbound) {
                 return {
                     up: dbInbound.up,
                     down: dbInbound.down,
@@ -263,7 +399,6 @@
                     remark: dbInbound.remark,
                     enable: dbInbound.enable,
                     expiryTime: dbInbound.expiryTime,
-
                     listen: inbound.listen,
                     port: inbound.port,
                     protocol: inbound.protocol,
@@ -272,71 +407,403 @@
                     sniffing: inbound.canSniffing() ? inbound.sniffing.toString() : '{}',
                 };
             },
-            async addInbound(inbound, dbInbound) {
-                const data = this.buildInboundPayload(inbound, dbInbound);
+
+            addInbound: async function (inbound, dbInbound) {
+                var data = this.buildInboundPayload(inbound, dbInbound);
                 if (dbInbound.batchEnable) {
                     data.batchSocks5Text = dbInbound.batchSocks5Text;
                     return await this.submit('/xui/inbound/addBatch', data, inModal);
                 }
                 return await this.submit('/xui/inbound/add', data, inModal);
             },
-            async updateInbound(inbound, dbInbound) {
-                const data = this.buildInboundPayload(inbound, dbInbound);
-                return await this.submit(`/xui/inbound/update/${dbInbound.id}`, data, inModal);
+
+            updateInbound: async function (inbound, dbInbound) {
+                var data = this.buildInboundPayload(inbound, dbInbound);
+                return await this.submit('/xui/inbound/update/' + dbInbound.id, data, inModal);
             },
-            resetTraffic(dbInbound) {
+
+            resetTraffic: function (dbInbound) {
+                var _this = this;
                 this.$confirm({
                     title: '重置流量',
                     content: '确定要重置流量吗?',
                     okText: '重置',
                     cancelText: '取消',
-                    onOk: () => {
-                        const inbound = dbInbound.toInbound();
+                    onOk: function () {
+                        var inbound = dbInbound.toInbound();
                         dbInbound.up = 0;
                         dbInbound.down = 0;
-                        this.updateInbound(inbound, dbInbound);
+                        _this.updateInbound(inbound, dbInbound);
                     },
                 });
             },
-            delInbound(dbInbound) {
+
+            delInbound: function (dbInbound) {
+                var _this = this;
                 this.$confirm({
                     title: '删除入站',
                     content: '确定要删除入站吗?',
                     okText: '删除',
                     cancelText: '取消',
-                    onOk: () => this.submit('/xui/inbound/del/' + dbInbound.id),
+                    onOk: function () {
+                        return _this.submit('/xui/inbound/del/' + dbInbound.id);
+                    },
                 });
             },
-            showQrcode(dbInbound) {
-                const link = dbInbound.genLink();
+
+            showQrcode: function (dbInbound) {
+                var link = dbInbound.genLink();
                 qrModal.show('二维码', link);
             },
-            showInfo(dbInbound) {
+
+            showInfo: function (dbInbound) {
                 infoModal.show(dbInbound);
             },
-            switchEnable(dbInbound) {
-                this.submit(`/xui/inbound/update/${dbInbound.id}`, dbInbound);
+
+            switchEnable: function (dbInbound) {
+                this.submit('/xui/inbound/update/' + dbInbound.id, dbInbound);
             },
-            async submit(url, data, modal) {
-                const msg = await HttpUtil.postWithModal(url, data, modal);
+
+            getInboundById: function (id) {
+                var index = this.dbInbounds.findIndex(function (item) {
+                    return item.id === id;
+                });
+                if (index === -1) {
+                    return null;
+                }
+                return this.inbounds[index] || null;
+            },
+
+            isInboundSelected: function (id) {
+                return this.selectedInboundIds.includes(id);
+            },
+
+            toggleInboundSelection: function (id, checked) {
+                if (checked) {
+                    if (!this.selectedInboundIds.includes(id)) {
+                        this.selectedInboundIds.push(id);
+                    }
+                } else {
+                    this.selectedInboundIds = this.selectedInboundIds.filter(function (item) {
+                        return item !== id;
+                    });
+                }
+            },
+
+            toggleSelectAllDisplayed: function (e) {
+                var checked = !!(e && e.target ? e.target.checked : e);
+                var displayedIds = this.filteredDbInbounds.map(function (item) {
+                    return item.id;
+                });
+
+                if (checked) {
+                    var merged = new Set(this.selectedInboundIds.concat(displayedIds));
+                    this.selectedInboundIds = Array.from(merged);
+                } else {
+                    this.selectedInboundIds = this.selectedInboundIds.filter(function (id) {
+                        return !displayedIds.includes(id);
+                    });
+                }
+            },
+
+            keepValidSelections: function () {
+                var validIds = this.dbInbounds.map(function (item) {
+                    return item.id;
+                });
+                this.selectedInboundIds = this.selectedInboundIds.filter(function (id) {
+                    return validIds.includes(id);
+                });
+            },
+
+            getSelectedInbounds: function () {
+                var _this = this;
+                return this.dbInbounds.filter(function (item) {
+                    return _this.selectedInboundIds.includes(item.id);
+                });
+            },
+
+            ensureSelectedInbounds: function () {
+                var selected = this.getSelectedInbounds();
+                if (selected.length === 0) {
+                    this.$message.warning('请先勾选节点');
+                    return null;
+                }
+                return selected;
+            },
+
+            addMonthsKeepDay: function (timestamp, months) {
+                var source = new Date(timestamp);
+                var year = source.getFullYear();
+                var month = source.getMonth();
+                var date = source.getDate();
+                var hours = source.getHours();
+                var minutes = source.getMinutes();
+                var seconds = source.getSeconds();
+                var milliseconds = source.getMilliseconds();
+
+                var targetMonthIndex = month + months;
+                var targetYear = year + Math.floor(targetMonthIndex / 12);
+                var normalizedMonth = ((targetMonthIndex % 12) + 12) % 12;
+                var lastDate = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+                var targetDate = Math.min(date, lastDate);
+
+                return new Date(
+                    targetYear,
+                    normalizedMonth,
+                    targetDate,
+                    hours,
+                    minutes,
+                    seconds,
+                    milliseconds
+                ).getTime();
+            },
+
+            addYearsKeepDay: function (timestamp, years) {
+                var source = new Date(timestamp);
+                var year = source.getFullYear() + years;
+                var month = source.getMonth();
+                var date = source.getDate();
+                var hours = source.getHours();
+                var minutes = source.getMinutes();
+                var seconds = source.getSeconds();
+                var milliseconds = source.getMilliseconds();
+
+                var lastDate = new Date(year, month + 1, 0).getDate();
+                var targetDate = Math.min(date, lastDate);
+
+                return new Date(
+                    year,
+                    month,
+                    targetDate,
+                    hours,
+                    minutes,
+                    seconds,
+                    milliseconds
+                ).getTime();
+            },
+
+            getRemainingTraffic: function (dbInbound) {
+                if (!dbInbound || dbInbound.total <= 0) {
+                    return null;
+                }
+                return dbInbound.total - (dbInbound.up + dbInbound.down);
+            },
+
+            getTrafficTagColor: function (dbInbound) {
+                if (!dbInbound || dbInbound.total <= 0) {
+                    return 'green';
+                }
+
+                var remain = this.getRemainingTraffic(dbInbound);
+
+                if (remain <= 0) {
+                    return 'red';
+                }
+                if (remain <= WARNING_100_GB) {
+                    return 'orange';
+                }
+                if (remain <= WARNING_300_GB) {
+                    return 'gold';
+                }
+                return 'cyan';
+            },
+
+            getExpiryTagColor: function (dbInbound) {
+                if (!dbInbound || dbInbound.expiryTime <= 0) {
+                    return 'green';
+                }
+
+                var remain = dbInbound.expiryTime - Date.now();
+
+                if (remain <= 0) {
+                    return 'red';
+                }
+                if (remain <= 7 * ONE_DAY_MS) {
+                    return 'orange';
+                }
+                if (remain <= 15 * ONE_DAY_MS) {
+                    return 'gold';
+                }
+                return 'blue';
+            },
+
+            batchUpdateInbounds: async function (selected, updater, successText) {
+                this.loading();
+                try {
+                    for (var i = 0; i < selected.length; i++) {
+                        var dbInbound = selected[i];
+                        var inbound = dbInbound.toInbound();
+                        updater(dbInbound, inbound);
+                        var data = this.buildInboundPayload(inbound, dbInbound);
+                        var msg = await HttpUtil.post('/xui/inbound/update/' + dbInbound.id, data);
+                        if (!msg.success) {
+                            this.$message.error(msg.msg || '批量操作失败');
+                            await this.getDBInbounds();
+                            return;
+                        }
+                    }
+                    this.$message.success(successText);
+                    await this.getDBInbounds();
+                } finally {
+                    this.loading(false);
+                }
+            },
+
+            batchDeleteInbounds: async function (selected) {
+                this.loading();
+                try {
+                    for (var i = 0; i < selected.length; i++) {
+                        var dbInbound = selected[i];
+                        var msg = await HttpUtil.post('/xui/inbound/del/' + dbInbound.id);
+                        if (!msg.success) {
+                            this.$message.error(msg.msg || '批量删除失败');
+                            await this.getDBInbounds();
+                            return;
+                        }
+                    }
+                    this.$message.success('批量删除成功');
+                    await this.getDBInbounds();
+                } finally {
+                    this.loading(false);
+                }
+            },
+
+            copyTextToClipboard: async function (text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+
+                var textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', 'readonly');
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            },
+
+            batchCopyLinks: async function (selected) {
+                var links = selected
+                    .map(function (item) {
+                        return item.hasLink && item.hasLink() ? item.genLink() : '';
+                    })
+                    .filter(function (item) {
+                        return !ObjectUtil.isEmpty(item);
+                    });
+
+                if (links.length === 0) {
+                    this.$message.warning('勾选的节点里没有可复制的链接');
+                    return;
+                }
+
+                var content = links.join('\n');
+                await this.copyTextToClipboard(content);
+                this.$success({
+                    title: '批量复制成功',
+                    content: '已复制 ' + links.length + ' 条链接，格式为一行一个。',
+                });
+            },
+
+            handleBatchAction: async function (action) {
+                var _this = this;
+                var selected = this.ensureSelectedInbounds();
+                if (!selected) {
+                    return;
+                }
+
+                switch (action.key) {
+                    case 'enable':
+                        await this.batchUpdateInbounds(selected, function (dbInbound) {
+                            dbInbound.enable = true;
+                        }, '批量启动成功');
+                        break;
+
+                    case 'disable':
+                        await this.batchUpdateInbounds(selected, function (dbInbound) {
+                            dbInbound.enable = false;
+                        }, '批量停止成功');
+                        break;
+
+                    case 'resetTraffic':
+                        this.$confirm({
+                            title: '批量重置流量',
+                            content: '确定要重置已勾选的 ' + selected.length + ' 个节点流量吗？',
+                            okText: '重置',
+                            cancelText: '取消',
+                            onOk: async function () {
+                                await _this.batchUpdateInbounds(selected, function (dbInbound) {
+                                    dbInbound.up = 0;
+                                    dbInbound.down = 0;
+                                }, '批量重置流量成功');
+                            },
+                        });
+                        break;
+
+                    case 'addMonth':
+                        await this.batchUpdateInbounds(selected, function (dbInbound) {
+                            if (dbInbound.expiryTime > 0) {
+                                dbInbound.expiryTime = _this.addMonthsKeepDay(dbInbound.expiryTime, 1);
+                            }
+                        }, '批量增加到期/月成功');
+                        break;
+
+                    case 'addYear':
+                        await this.batchUpdateInbounds(selected, function (dbInbound) {
+                            if (dbInbound.expiryTime > 0) {
+                                dbInbound.expiryTime = _this.addYearsKeepDay(dbInbound.expiryTime, 1);
+                            }
+                        }, '批量增加到期/年成功');
+                        break;
+
+                    case 'delete':
+                        this.$confirm({
+                            title: '批量删除入站',
+                            content: '确定要删除已勾选的 ' + selected.length + ' 个节点吗？',
+                            okText: '删除',
+                            cancelText: '取消',
+                            onOk: async function () {
+                                await _this.batchDeleteInbounds(selected);
+                            },
+                        });
+                        break;
+
+                    case 'copyLinks':
+                        await this.batchCopyLinks(selected);
+                        break;
+                }
+            },
+
+            submit: async function (url, data, modal) {
+                var msg = await HttpUtil.postWithModal(url, data, modal);
                 if (msg.success) {
                     await this.getDBInbounds();
                 }
                 return msg;
             },
         },
-        watch: {
-            searchKey(value) {
-                this.searchInbounds(value);
-            }
-        },
-        mounted() {
+        mounted: function () {
             this.getDBInbounds();
         },
         computed: {
-            total() {
-                let down = 0, up = 0;
-                for (let i = 0; i < this.dbInbounds.length; ++i) {
+            filteredDbInbounds: function () {
+                var key = (this.searchKey || '').trim().toLowerCase();
+                if (ObjectUtil.isEmpty(key)) {
+                    return this.dbInbounds;
+                }
+
+                return this.dbInbounds.filter(function (item) {
+                    var remark = (item.remark || '').toLowerCase();
+                    return remark.includes(key);
+                });
+            },
+
+            total: function () {
+                var down = 0;
+                var up = 0;
+                for (var i = 0; i < this.dbInbounds.length; ++i) {
                     down += this.dbInbounds[i].down;
                     up += this.dbInbounds[i].up;
                 }
@@ -344,11 +811,33 @@
                     down: down,
                     up: up,
                 };
-            }
+            },
+
+            isAllDisplayedSelected: function () {
+                if (this.filteredDbInbounds.length === 0) {
+                    return false;
+                }
+                var _this = this;
+                return this.filteredDbInbounds.every(function (item) {
+                    return _this.selectedInboundIds.includes(item.id);
+                });
+            },
+
+            isDisplayedSelectionIndeterminate: function () {
+                if (this.filteredDbInbounds.length === 0) {
+                    return false;
+                }
+                var _this = this;
+                var selectedCount = this.filteredDbInbounds.filter(function (item) {
+                    return _this.selectedInboundIds.includes(item.id);
+                }).length;
+                return selectedCount > 0 && selectedCount < this.filteredDbInbounds.length;
+            },
         },
     });
-
+})();
 </script>
+
 {{template "inboundModal"}}
 {{template "promptModal"}}
 {{template "qrcodeModal"}}
